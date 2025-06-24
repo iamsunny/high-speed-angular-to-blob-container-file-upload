@@ -1,0 +1,184 @@
+<div class="upload-container">
+    <div 
+      class="upload-area"
+      [class.dragging]="isDragOver"
+      [class.has-file]="selectedFile"
+      [class.uploading]="isUploading"
+      (dragover)="onDragOver($event)"
+      (dragleave)="onDragLeave($event)"
+      (drop)="onDrop($event)"
+      (click)="!isUploading && !selectedFile ? fileInput.click() : null">
+      
+      <input 
+        #fileInput
+        type="file"
+        class="file-input"
+        (change)="onFileSelected($event)"
+        [disabled]="isUploading">
+      
+      <div class="upload-icon" *ngIf="!selectedFile">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="upload-svg">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+      </div>
+      
+      <div class="upload-text" *ngIf="!selectedFile">
+        <p class="primary-text">Drop your awesome file here or click to browse</p>
+        <p class="secondary-text">Maximum File Size: 5GB</p>
+      </div>
+      
+      <div class="file-info" *ngIf="selectedFile">
+        <div class="file-icon" [class.pulse]="isUploading">
+          <span *ngIf="!uploadProgress || uploadProgress.status !== 'completed'" class="file-emoji">
+            {{ isUploading ? '🚀' : '📄' }}
+          </span>
+          <span *ngIf="uploadProgress && uploadProgress.status === 'completed'" class="completed-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </span>
+        </div>
+        <div class="file-details">
+          <p class="file-name">{{ selectedFile.name }}</p>
+          <p class="file-size">{{ formatFileSize(selectedFile.size) }}</p>
+          <p class="upload-mode" *ngIf="isLargeFile && !uploadProgress?.error">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+            Chunked upload activated!
+          </p>
+        </div>
+      </div>
+      
+      <div class="motivational-message" *ngIf="isUploading && uploadProgress">
+        <span *ngIf="uploadProgress.percentage < 25">uploading begins... 🚀</span>
+        <span *ngIf="uploadProgress.percentage >= 25 && uploadProgress.percentage < 50">upload in progress... ! 💪</span>
+        <span *ngIf="uploadProgress.percentage >= 50 && uploadProgress.percentage < 75">More than halfway there... ✨</span>
+        <span *ngIf="uploadProgress.percentage >= 75 && uploadProgress.percentage < 95">Almost there... 🏁</span>
+        <span *ngIf="uploadProgress.percentage >= 95 && uploadProgress.percentage < 100">Confirming the upload... Hang tight! 🌟</span>
+      </div>
+    </div>
+  
+    <div class="progress-section" *ngIf="uploadProgress">
+      <div class="progress-header">
+        <span class="progress-label" [class.bounce]="uploadProgress.status === 'completed'">
+          {{ uploadProgress.status === 'uploading' ? 'Upoading to blob container...' : 
+             uploadProgress.status === 'completed' ? 'Woohoo! Upload Complete! 🎉' : 
+             uploadProgress.status === 'cancelled' ? 'Upload Cancelled' :
+             'Oops! Upload Failed' }}
+        </span>
+        <span class="progress-percentage" *ngIf="uploadProgress.status === 'uploading'">
+          {{ uploadProgress.percentage }}%
+        </span>
+      </div>
+      
+      <div class="progress-bar">
+        <div 
+          class="progress-fill"
+          [class.completed]="uploadProgress.status === 'completed'"
+          [class.failed]="uploadProgress.status === 'failed' || uploadProgress.status === 'cancelled'"
+          [style.width.%]="uploadProgress.percentage">
+        </div>
+      </div>
+
+      <div class="upload-stats" *ngIf="uploadProgress.status === 'uploading'">
+        <div class="stat-item" *ngIf="uploadProgress.speed">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+          </svg>
+          <span>{{ uploadProgress.speed }} <span class="stat-emoji" *ngIf="getSpeedEmoji(uploadProgress.speed)">{{ getSpeedEmoji(uploadProgress.speed) }}</span></span>
+        </div>
+        <div class="stat-item" *ngIf="uploadProgress.timeRemaining">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>{{ uploadProgress.timeRemaining }} to go</span>
+        </div>
+      </div>
+
+      <div class="upload-time">
+        <span class="time-label" *ngIf="isUploading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Time flying by: {{ elapsedTime }}
+        </span>
+        <span class="time-label completed" *ngIf="uploadProgress.status === 'completed' && totalUploadTime">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Record time: {{ totalUploadTime }}
+        </span>
+      </div>
+      
+      <div class="error-message" *ngIf="(uploadProgress.status === 'failed' || uploadProgress.status === 'cancelled') && uploadProgress.error">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        {{ uploadProgress.error }}
+      </div>
+      
+      <div class="success-message" *ngIf="uploadProgress.status === 'completed'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="success-icon">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        Awesome! Your file is now safely in the cloud! 🎉
+      </div>
+    </div>
+  
+    <div class="action-buttons">
+      <button 
+        class="upload-button"
+        [disabled]="!selectedFile || isUploading || (uploadProgress && uploadProgress.status === 'completed')"
+        (click)="uploadFile()"
+        [class.pulse-button]="selectedFile && !isUploading && (!uploadProgress || uploadProgress.status !== 'completed')"
+        [class.uploading-button]="isUploading">
+        <!-- Gradient progress overlay -->
+        <div class="button-gradient-progress" *ngIf="isUploading && uploadProgress" 
+             [style.width.%]="uploadProgress.percentage"></div>
+        
+        <span class="button-text">{{ isUploading ? 'Uploading...' : 'Upload to Azure' }}</span>
+        <span class="button-icon" *ngIf="!isUploading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+        </span>
+        <span class="button-icon loading" *ngIf="isUploading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinner">
+            <circle cx="12" cy="12" r="10"></circle>
+          </svg>
+        </span>
+      </button>
+      
+      <button 
+        class="cancel-button"
+        *ngIf="selectedFile"
+        (click)="cancelUpload()"
+        [class.cancel-uploading]="isUploading"
+        [class.fade-in]="selectedFile">
+        <span class="button-text">
+          <ng-container *ngIf="isUploading">Cancel Upload</ng-container>
+          <ng-container *ngIf="!isUploading">
+            {{ uploadProgress && uploadProgress.status === 'completed' ? 'Upload Another!' : 'Cancel' }}
+          </ng-container>
+        </span>
+        <span class="button-icon" *ngIf="isUploading">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+        </span>
+      </button>
+    </div>
+  </div>
+  
